@@ -1,5 +1,7 @@
 from pydantic import BaseModel, validator
 
+from app.models import UserRole
+
 
 # Add Books
 class add_book_request(BaseModel):
@@ -7,6 +9,7 @@ class add_book_request(BaseModel):
     author: str
     price: int
     year_published: int
+    department: str
 
     @validator("title")
     def validate_title(cls, value):
@@ -35,11 +38,21 @@ class add_book_request(BaseModel):
             )
         return value
 
+    @validator("department")
+    def validate_department(cls, value):
+        valid_department = ["Eng", "Arts"]
+        if value not in valid_department:
+            raise ValueError(
+                f"Invalid Add Department ! '{value}' Department Add Only {valid_department}"
+            )
+        return value
+
 
 # User Signup schemas
 class SignupForm(BaseModel):
     username: str
     password: str
+    role: UserRole
 
     @validator("username")
     def validate_username(cls, value):
@@ -52,6 +65,13 @@ class SignupForm(BaseModel):
         if len(value) < 6:
             raise ValueError("Password must be at least 6 characters long")
         return value
+
+    @validator("role")
+    def validate_role(cls, value):
+        try:
+            return UserRole(value)
+        except ValueError:
+            raise ValueError(f"Invalid role: {value}")
 
 
 # User Signin schemas

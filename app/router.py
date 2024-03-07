@@ -34,12 +34,21 @@ async def add_book(
     db: Session = Depends(get_db),
 ):
     try:
+        # Check if a book with the same title already exists
+        existing_book = db.query(Book).filter(Book.title == request.title).first()
+        if existing_book:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Book *{existing_book.title}* title already exists",
+            )
+
         # print(request.title)
         new_book = Book(
             title=request.title,
             author=request.author,
             price=request.price,
             year_published=request.year_published,
+            department=request.department,
         )
         db.add(new_book)
         db.commit()
@@ -64,6 +73,7 @@ async def get_all_books(db: Session = Depends(get_db)):
                 "author": book.author,
                 "price": book.price,
                 "year_published": book.year_published,
+                "department": book.department,
             }
             for book in books
         ]
@@ -84,6 +94,7 @@ async def update_book(
             book.author = request.author
             book.price = request.price
             book.year_published = request.year_published
+            book.department = request.department
             db.commit()
             return {"message": "Book updated successfully", "book_id": book.id}
         else:
@@ -134,6 +145,7 @@ async def get_book_details(
             "author": book.author,
             "price": book.price,
             "year_published": book.year_published,
+            "department": book.department,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
@@ -145,7 +157,10 @@ async def get_book_details(
 
 @router.post("/signup")
 async def signup(signupForm: SignupForm):
-    new_signup = Signup(username=signupForm.username, password=signupForm.password)
+    role_str = signupForm.role.value if signupForm.role else None
+    new_signup = Signup(
+        username=signupForm.username, password=signupForm.password, role=role_str
+    )
     db = SessionLocal()
     db.add(new_signup)
     db.commit()
@@ -188,8 +203,11 @@ async def get_all_user():
     db = SessionLocal()
     user_data = db.query(Signup).all()
     db.close()
-    user_data = [user.username for user in user_data]
-    return {"UserName": user_data}
+    user_data = [
+        {"id": user.id, "UserName": user.username, "Role": user.role}
+        for user in user_data
+    ]
+    return {"User": user_data}
 
 
 ## delete username
