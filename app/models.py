@@ -31,3 +31,4 @@ class Signup(Base):
     username = Column(String(length=100), unique=True)
     password = Column(String(length=255))
     role = Column(String(length=50))
+    department = Column(String(length=255))

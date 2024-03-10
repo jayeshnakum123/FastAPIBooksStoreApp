@@ -63,160 +63,85 @@ async def signin(signinForm: SigninForm):
     return {"Message": "User Signin Done!", "access_token": access_token}
 
 
-########################################################################################
+################################################################################################
 
 
-# admin get all book code !
-@router.get("/admin/get_all_books")
-async def get_all_books(
-    db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme),
-):
+def get_current_user_role(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     try:
-        # Decode and verify the JWT token
-        credentials_exception = HTTPException(
-            status_code=401,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
-        user_role: str = payload.get("role")
-        if username is None or user_role is None:
+        role: str = payload.get("role")
+        if username is None or role is None:
             raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    return role
 
-        # Check if the user has the "admin" role
-        if user_role != UserRole.admin.value:
-            raise HTTPException(
-                status_code=403,
-                detail="Permission denied. Only admins can view all books.",
-            )
 
-        # Your logic to retrieve and return books here
+@router.get("/books")
+async def get_books_based_on_role(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        role: str = payload.get("role")
+        if username is None or role is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    user = (
+        db.query(Signup)
+        .filter(Signup.username == username, Signup.role == role)
+        .first()
+    )
+    if user is None:
+        raise credentials_exception
+
+    if role == UserRole.admin.value:
+        # Return all books for admin
         books = db.query(Book).all()
-        return {
-            "books": [
-                {
-                    "id": book.id,
-                    "title": book.title,
-                    "author": book.author,
-                    "price": book.price,
-                    "year_published": book.year_published,
-                    "department": book.department,
-                }
-                for book in books
-            ]
-        }
-    except JWTError:
-        raise credentials_exception
+    elif role == UserRole.student.value:
+        # Filter books based on the department of the signed-in student
+        books = db.query(Book).filter_by(department=user.department).all()
+    else:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    return {
+        "books": [
+            {
+                "id": book.id,
+                "title": book.title,
+                "author": book.author,
+                "price": book.price,
+                "year_published": book.year_published,
+                "department": book.department,
+            }
+            for book in books
+        ]
+    }
 
 
-####################################################################################
-# student Eng_Books Access code !
-
-
-@router.get("/get_eng_books_for_student")
-async def get_eng_books_for_student(
-    db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme),
-):
-    try:
-        # Decode and verify the JWT token
-        credentials_exception = HTTPException(
-            status_code=401,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        user_role: str = payload.get("role")
-        if username is None or user_role is None:
-            raise credentials_exception
-
-        # Check if the user has the "student" role
-        if user_role != UserRole.student.value:
-            raise HTTPException(
-                status_code=403,
-                detail="Permission denied. Only students can view 'Eng' books.",
-            )
-
-        # Your logic to retrieve and return 'Eng' books here
-        eng_books = db.query(Book).filter_by(department="Eng").all()
-        return {
-            "Eng_Books_List": [
-                {
-                    "id": book.id,
-                    "title": book.title,
-                    "author": book.author,
-                    "price": book.price,
-                    "year_published": book.year_published,
-                    "department": book.department,
-                }
-                for book in eng_books
-            ]
-        }
-    except JWTError:
-        raise credentials_exception
-
-
-###########################################################################################
-# student Arts_Books Access code !
-@router.get("/arts_books_for_students")
-async def get_arts_books_for_students(
-    db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme),
-):
-    try:
-        # Decode and verify the JWT token
-        credentials_exception = HTTPException(
-            status_code=401,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        user_role: str = payload.get("role")
-        if username is None or user_role is None:
-            raise credentials_exception
-
-        # Check if the user has the "student" role
-        if user_role != UserRole.student.value:
-            raise HTTPException(
-                status_code=403,
-                detail="Permission denied. Only students can view Arts books.",
-            )
-
-        # Your logic to retrieve and return Arts books here
-        arts_books = (
-            db.query(Book)
-            .filter(Book.department == "Arts", Book.year_published > 0)
-            .all()
-        )
-        return {
-            "Arts_Books_List": [
-                {
-                    "id": book.id,
-                    "title": book.title,
-                    "author": book.author,
-                    "price": book.price,
-                    "year_published": book.year_published,
-                    "department": book.department,
-                }
-                for book in arts_books
-            ]
-        }
-    except JWTError:
-        raise credentials_exception
-
-
-##########################################################################################
+################################################################################################
 
 """CHECK CONNECTION IS SUCCESSFULL OR NOT !"""
 
 
 @router.get("/demo")
 def demo():
-    return {"message": "Connection successfully"}
+    return {"message": "Connection Successfully !"}
 
 
 # New Book Added In Database Using PostMan throw!
@@ -354,7 +279,10 @@ async def get_book_details(
 async def signup(signupForm: SignupForm):
     role_str = signupForm.role.value if signupForm.role else None
     new_signup = Signup(
-        username=signupForm.username, password=signupForm.password, role=role_str
+        username=signupForm.username,
+        password=signupForm.password,
+        role=role_str,
+        department=signupForm.department,
     )
     db = SessionLocal()
     db.add(new_signup)
@@ -364,30 +292,6 @@ async def signup(signupForm: SignupForm):
 
     # return signupForm
     return {"Message": "New User Are Created And Save Data In DataBase !"}
-
-
-## user Signin Using Table Signup using postman
-
-
-# @router.get("/signin")
-# async def signin(signinForm: SigninForm):
-#     db = SessionLocal()
-#     signin_user = (
-#         db.query(Signup)
-#         .filter(
-#             Signup.username == signinForm.username,
-#             Signup.password == signinForm.password,
-#         )
-#         .first()
-#     )
-#     if (
-#         signin_user is None
-#         or signin_user.password != signinForm.password
-#         and signin_user.username != signinForm.username
-#     ):
-#         raise HTTPException(status_code=404, detail="Invalid UserName and Password !")
-
-#     return {"Message": "User Signin Done ! "}
 
 
 ## get all username data from table signup
@@ -404,6 +308,7 @@ async def get_all_user():
             "UserName": user.username,
             "Password": user.password,
             "Role": user.role,
+            "Department": user.department,
         }
         for user in user_data
     ]
@@ -428,77 +333,3 @@ async def delete_user(user_id: int):
 
     # Return a success response
     return {"message": "User Delete Successfully !"}
-
-
-###########################################################
-
-# SECRET_KEY = "your-secret-key"
-# ALGORITHM = "HS256"
-# oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
-
-# # Function to create an access token
-# def create_access_token(data: dict):
-#     to_encode = data.copy()
-#     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-#     return encoded_jwt
-
-
-# # ... Your existing code ...
-
-
-# # Dependency to get the current user based on JWT token
-# async def get_current_user(token: str = Depends(oauth2_scheme)):
-#     credentials_exception = HTTPException(
-#         status_code=status.HTTP_401_UNAUTHORIZED,
-#         detail="Could not validate credentials",
-#         headers={"WWW-Authenticate": "Bearer"},
-#     )
-#     try:
-#         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-#         username: str = payload.get("sub")
-#         if username is None:
-#             raise credentials_exception
-#         # Check if the user exists in the database
-#         db = SessionLocal()
-#         user = db.query(Signup).filter(Signup.username == username).first()
-#         db.close()
-
-#         if user is None:
-#             raise credentials_exception
-#         return username
-#     except JWTError:
-#         raise credentials_exception
-
-
-# # ... Your existing code ...
-
-
-# # Admin View All Books Router
-# @router.get("/admin/view_books/")
-# async def view_books(
-#     current_user: str = Depends(get_current_user), db: Session = Depends(get_db)
-# ):
-#     # Check if the user is an admin
-#     user = db.query(Signup).filter(Signup.username == current_user).first()
-#     if user and user.role == UserRole.admin.value:
-#         # If the user is an admin, fetch all books
-#         books = db.query(Book).all()
-#         return {
-#             "books": [
-#                 {
-#                     "id": book.id,
-#                     "title": book.title,
-#                     "author": book.author,
-#                     "price": book.price,
-#                     "year_published": book.year_published,
-#                     "department": book.department,
-#                 }
-#                 for book in books
-#             ]
-#         }
-#     else:
-#         # If the user is not an admin, raise an HTTPException
-#         raise HTTPException(
-#             status_code=403, detail="Permission denied. Admin access required."
-#         )

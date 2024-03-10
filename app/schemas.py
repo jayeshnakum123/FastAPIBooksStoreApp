@@ -53,6 +53,7 @@ class SignupForm(BaseModel):
     username: str
     password: str
     role: UserRole
+    department: str
 
     @validator("username")
     def validate_username(cls, value):
@@ -72,6 +73,15 @@ class SignupForm(BaseModel):
             return UserRole(value)
         except ValueError:
             raise ValueError(f"Invalid role: {value}")
+
+    @validator("department")
+    def validate_department(cls, value):
+        valid_department = ["admin", "Eng", "Arts"]
+        if value not in valid_department:
+            raise ValueError(
+                f"Invalid Department! '{value}' is not a valid department. Valid departments are: {', '.join(valid_department)}"
+            )
+        return value
 
 
 # User Signin schemas
