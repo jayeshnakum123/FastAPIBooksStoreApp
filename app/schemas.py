@@ -4,6 +4,9 @@ from app.models import UserRole
 
 
 # Add Books
+"""Add Books Using Validator Schemas"""
+
+
 class add_book_request(BaseModel):
     title: str
     author: str
@@ -40,7 +43,7 @@ class add_book_request(BaseModel):
 
     @validator("department")
     def validate_department(cls, value):
-        valid_department = ["Eng", "Arts"]
+        valid_department = ["Eng", "Arts", "Comm"]
         if value not in valid_department:
             raise ValueError(
                 f"Invalid Add Department ! '{value}' Department Add Only {valid_department}"
@@ -49,10 +52,13 @@ class add_book_request(BaseModel):
 
 
 # User Signup schemas
+"""SignUpForm Validator"""
+
+
 class SignupForm(BaseModel):
     username: str
     password: str
-    role: UserRole
+    role: UserRole  # Using Roll Are Access Is UsingRole Class Enum
     department: str
 
     @validator("username")
@@ -70,13 +76,13 @@ class SignupForm(BaseModel):
     @validator("role")
     def validate_role(cls, value):
         try:
-            return UserRole(value)
+            return UserRole(value)  # Using Roll Are Access Is UsingRole Class Enum
         except ValueError:
             raise ValueError(f"Invalid role: {value}")
 
     @validator("department")
     def validate_department(cls, value):
-        valid_department = ["admin", "Eng", "Arts"]
+        valid_department = ["admin", "Eng", "Arts", "Comm"]
         if value not in valid_department:
             raise ValueError(
                 f"Invalid Department! '{value}' is not a valid department. Valid departments are: {', '.join(valid_department)}"
@@ -85,6 +91,8 @@ class SignupForm(BaseModel):
 
 
 # User Signin schemas
+
+
 class SigninForm(BaseModel):
     username: str
     password: str

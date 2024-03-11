@@ -4,6 +4,8 @@ from app.database import DATABASE_URL
 from app.database import SessionLocal, engine, Base
 from enum import Enum
 
+"""Create Table Book Using Models"""
+
 
 class Book(Base):
     __tablename__ = "books"
@@ -18,10 +20,15 @@ class Book(Base):
 
 books = Book
 
+"""Create User Role"""
+
 
 class UserRole(Enum):
     admin = "admin"
     student = "student"
+
+
+"""Create Table SignUp"""
 
 
 class Signup(Base):

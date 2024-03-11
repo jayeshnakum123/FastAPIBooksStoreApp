@@ -8,6 +8,8 @@ from fastapi.security import OAuth2PasswordBearer
 from app.schemas import UserRole
 from app.models import Signup
 from datetime import datetime, timedelta
+from fastapi import Query
+from typing import Optional
 
 router = APIRouter()
 
@@ -26,13 +28,16 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+# The OAuth2PasswordBearer class is commonly used for authentication in API
 
 
 #################################################################################
 # create JWT Bearer Token Function
 def create_access_token(data: dict):
     to_encode = data.copy()
-    expiration = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expiration = datetime.utcnow() + timedelta(
+        minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+    )  # timedelta representing the expiration time for the access token
     to_encode.update({"exp": expiration})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -60,10 +65,17 @@ async def signin(signinForm: SigninForm):
     token_data = {"sub": signin_user.username, "role": signin_user.role}
     access_token = create_access_token(token_data)
 
-    return {"Message": "User Signin Done!", "access_token": access_token}
+    return {
+        "Message": "User Signin Done!",
+        "UserName": signin_user.username,
+        "UserRole": signin_user.role,
+        "Department": signin_user.department,
+        "access_token": access_token,
+    }
 
 
 ################################################################################################
+# Get Book By Department
 
 
 def get_current_user_role(token: str = Depends(oauth2_scheme)):
@@ -83,9 +95,15 @@ def get_current_user_role(token: str = Depends(oauth2_scheme)):
     return role
 
 
-@router.get("/books")
+################################################################################################
+
+"""Admin And Student Are Access Books By In Role"""
+
+
+@router.get("/books/Optional")
 async def get_books_based_on_role(
     token: str = Depends(oauth2_scheme),
+    department: Optional[str] = Query(None, title="Department"),
     db: Session = Depends(get_db),
 ):
     credentials_exception = HTTPException(
@@ -111,13 +129,22 @@ async def get_books_based_on_role(
         raise credentials_exception
 
     if role == UserRole.admin.value:
-        # Return all books for admin
-        books = db.query(Book).all()
+        if department:
+            # Return all books for the specific department
+            books = db.query(Book).filter_by(department=department).all()
+        else:
+            # Return all books for admin
+            books = db.query(Book).all()
     elif role == UserRole.student.value:
+        if department and department != user.department:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"You are not authorized to access books ! your department *{user.department}* only access",
+            )
         # Filter books based on the department of the signed-in student
         books = db.query(Book).filter_by(department=user.department).all()
     else:
-        raise HTTPException(status_code=403, detail="Forbidden")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
     return {
         "books": [
@@ -134,8 +161,7 @@ async def get_books_based_on_role(
     }
 
 
-################################################################################################
-
+#####################################################################################
 """CHECK CONNECTION IS SUCCESSFULL OR NOT !"""
 
 
@@ -333,3 +359,57 @@ async def delete_user(user_id: int):
 
     # Return a success response
     return {"message": "User Delete Successfully !"}
+
+
+# @router.get("/books_By_role")
+# async def get_books_based_on_role(
+#     token: str = Depends(oauth2_scheme),
+#     db: Session = Depends(get_db),
+# ):
+#     credentials_exception = HTTPException(
+#         status_code=status.HTTP_401_UNAUTHORIZED,
+#         detail="Could not validate credentials",
+#         headers={"WWW-Authenticate": "Bearer"},
+#     )
+#     try:
+#         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+#         username: str = payload.get("sub")
+#         role: str = payload.get("role")
+#         if username is None or role is None:
+#             raise credentials_exception
+#     except JWTError:
+#         raise credentials_exception
+
+#     user = (
+#         db.query(Signup)
+#         .filter(Signup.username == username, Signup.role == role)
+#         .first()
+#     )
+#     if user is None:
+#         raise credentials_exception
+
+#     if role == UserRole.admin.value:
+#         # Return all books for admin
+#         books = db.query(Book).all()
+#     elif role == UserRole.student.value:
+#         # Filter books based on the department of the signed-in student
+#         books = db.query(Book).filter_by(department=user.department).all()
+#     else:
+#         raise HTTPException(status_code=403, detail="Forbidden")
+
+#     return {
+#         "books": [
+#             {
+#                 "id": book.id,
+#                 "title": book.title,
+#                 "author": book.author,
+#                 "price": book.price,
+#                 "year_published": book.year_published,
+#                 "department": book.department,
+#             }
+#             for book in books
+#         ]
+#     }
+
+
+# ################################################################################################
