@@ -2,6 +2,7 @@ from pydantic import BaseModel, validator
 
 from app.models import UserRole
 
+from typing import Union
 
 # Add Books
 """Add Books Using Validator Schemas"""
@@ -59,7 +60,8 @@ class SignupForm(BaseModel):
     username: str
     password: str
     role: UserRole  # Using Roll Are Access Is UsingRole Class Enum
-    department: str
+    department: Union[str, list]  # Use list instead of str
+    # department: str
 
     @validator("username")
     def validate_username(cls, value):
@@ -82,11 +84,19 @@ class SignupForm(BaseModel):
 
     @validator("department")
     def validate_department(cls, value):
-        valid_department = ["admin", "Eng", "Arts", "Comm"]
-        if value not in valid_department:
-            raise ValueError(
-                f"Invalid Department! '{value}' is not a valid department. Valid departments are: {', '.join(valid_department)}"
-            )
+        valid_departments = ["admin", "Eng", "Arts", "Comm"]
+
+        # If a single value is provided, convert it to a list
+        if isinstance(value, str):
+            value = [value]
+
+        # Validate each department value
+        for dep in value:
+            if dep not in valid_departments:
+                raise ValueError(
+                    f"Invalid Department! '{dep}' is not a valid department. Valid departments are: {', '.join(valid_departments)}"
+                )
+
         return value
 
 

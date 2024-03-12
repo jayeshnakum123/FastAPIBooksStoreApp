@@ -75,13 +75,12 @@ async def signin(signinForm: SigninForm):
 
 
 ################################################################################################
-# Get Book By Department
 
 
 def get_current_user_role(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
+        detail="Could not validate credentials You Are Token ! Session Are Expired GoTo SignIn",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
@@ -95,59 +94,51 @@ def get_current_user_role(token: str = Depends(oauth2_scheme)):
     return role
 
 
-################################################################################################
-
-"""Admin And Student Are Access Books By In Role"""
-
-
-@router.get("/books/Optional")
-async def get_books_based_on_role(
-    token: str = Depends(oauth2_scheme),
-    department: Optional[str] = Query(None, title="Department"),
-    db: Session = Depends(get_db),
-):
+def get_current_username(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
+        detail="Could not validate credentials You Are Token ! Session Are Expired GoTo SignIn",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
-        role: str = payload.get("role")
-        if username is None or role is None:
+        if username is None:
             raise credentials_exception
+        return username
     except JWTError:
         raise credentials_exception
 
-    user = (
-        db.query(Signup)
-        .filter(Signup.username == username, Signup.role == role)
-        .first()
-    )
-    if user is None:
-        raise credentials_exception
 
-    if role == UserRole.admin.value:
-        if department:
-            # Return all books for the specific department
-            books = db.query(Book).filter_by(department=department).all()
-        else:
-            # Return all books for admin
+################################################################################################
+
+"""Admin And Student Are Access Books By In Role"""
+
+
+@router.get("/get_books_by_user")
+async def get_books_by_user(
+    current_user_role: str = Depends(get_current_user_role),
+    db: Session = Depends(get_db),
+    username: str = Depends(get_current_username),
+):
+    try:
+        if current_user_role == UserRole.admin.value:
             books = db.query(Book).all()
-    elif role == UserRole.student.value:
-        if department and department != user.department:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"You are not authorized to access books ! your department *{user.department}* only access",
-            )
-        # Filter books based on the department of the signed-in student
-        books = db.query(Book).filter_by(department=user.department).all()
-    else:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        elif current_user_role == UserRole.student.value:
+            # Retrieve the user from the database based on the provided username
+            user = db.query(Signup).filter(Signup.username == username).first()
 
-    return {
-        "books": [
+            # Check if the user exists
+            if user is None:
+                raise HTTPException(status_code=404, detail="User not found")
+
+            # Retrieve books based on the user's department
+            books = db.query(Book).filter(Book.department.in_(user.department)).all()
+        else:
+            raise HTTPException(status_code=403, detail="Forbidden")
+
+        # Format the books as needed
+        formatted_books = [
             {
                 "id": book.id,
                 "title": book.title,
@@ -158,7 +149,13 @@ async def get_books_based_on_role(
             }
             for book in books
         ]
-    }
+
+        return {"books": formatted_books}
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 
 #####################################################################################
@@ -170,6 +167,7 @@ def demo():
     return {"message": "Connection Successfully !"}
 
 
+##############################################################################
 # New Book Added In Database Using PostMan throw!
 """A new book has been added to the database using Postman !"""
 
@@ -204,6 +202,8 @@ async def add_book(
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 
+##############################################################################
+
 # GET ALL BOOKS ! POSTMAN AND ALL SHOW IN BROWSER
 """GET ALL BOOKS ROUTER"""
 
@@ -226,7 +226,9 @@ async def get_all_books(db: Session = Depends(get_db)):
     }
 
 
-"""UPDATE THE ROW IN TABLE"""
+##############################################################################
+
+"""UPDATE THE BOOK IN TABLE"""
 
 
 @router.put("/update_book/{book_id}")
@@ -249,7 +251,8 @@ async def update_book(
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 
-"""DELETE THE ROW IN TABLE"""
+##############################################################################
+"""DELETE THE BOOK IN TABLE"""
 
 
 @router.delete("/delete_book/{book_id}")
@@ -271,6 +274,7 @@ async def delete_book(
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 
+##############################################################################
 """GET ONE BOOK DETAIL IN DATABASES !"""
 
 
@@ -320,6 +324,7 @@ async def signup(signupForm: SignupForm):
     return {"Message": "New User Are Created And Save Data In DataBase !"}
 
 
+##############################################################################
 ## get all username data from table signup
 
 
@@ -341,6 +346,7 @@ async def get_all_user():
     return {"User": user_data}
 
 
+##############################################################################
 ## delete username
 @router.delete("/user_delete/{user_id}")
 async def delete_user(user_id: int):
@@ -361,55 +367,4 @@ async def delete_user(user_id: int):
     return {"message": "User Delete Successfully !"}
 
 
-# @router.get("/books_By_role")
-# async def get_books_based_on_role(
-#     token: str = Depends(oauth2_scheme),
-#     db: Session = Depends(get_db),
-# ):
-#     credentials_exception = HTTPException(
-#         status_code=status.HTTP_401_UNAUTHORIZED,
-#         detail="Could not validate credentials",
-#         headers={"WWW-Authenticate": "Bearer"},
-#     )
-#     try:
-#         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-#         username: str = payload.get("sub")
-#         role: str = payload.get("role")
-#         if username is None or role is None:
-#             raise credentials_exception
-#     except JWTError:
-#         raise credentials_exception
-
-#     user = (
-#         db.query(Signup)
-#         .filter(Signup.username == username, Signup.role == role)
-#         .first()
-#     )
-#     if user is None:
-#         raise credentials_exception
-
-#     if role == UserRole.admin.value:
-#         # Return all books for admin
-#         books = db.query(Book).all()
-#     elif role == UserRole.student.value:
-#         # Filter books based on the department of the signed-in student
-#         books = db.query(Book).filter_by(department=user.department).all()
-#     else:
-#         raise HTTPException(status_code=403, detail="Forbidden")
-
-#     return {
-#         "books": [
-#             {
-#                 "id": book.id,
-#                 "title": book.title,
-#                 "author": book.author,
-#                 "price": book.price,
-#                 "year_published": book.year_published,
-#                 "department": book.department,
-#             }
-#             for book in books
-#         ]
-#     }
-
-
-# ################################################################################################
+#################################################################################################

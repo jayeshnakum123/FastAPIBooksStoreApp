@@ -1,8 +1,9 @@
-from sqlalchemy import Column, Integer, String, MetaData, Enum
+from sqlalchemy import Column, Integer, String, MetaData, Enum, ARRAY
 from app.database import Base
 from app.database import DATABASE_URL
 from app.database import SessionLocal, engine, Base
 from enum import Enum
+from sqlalchemy.ext.declarative import declarative_base
 
 """Create Table Book Using Models"""
 
@@ -38,4 +39,4 @@ class Signup(Base):
     username = Column(String(length=100), unique=True)
     password = Column(String(length=255))
     role = Column(String(length=50))
-    department = Column(String(length=255))
+    department = Column(ARRAY(String(length=255)))
