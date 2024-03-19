@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add New Book</title>
+    <!-- Add Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+    <style>
+        /* Custom CSS for button hover effect */
+        .btn-primary:hover {
+            background-color: #3584da !important;
+            /* Change background color on hover */
+            border-color: #007bff !important;
+            /* Change border color on hover */
+        }
+
+        .btn-primary:hover:focus {
+            background-color: #3584da !important;
+            /* Change background color on hover and focus */
+            border-color: #0056b3 !important;
+            /* Change border color on hover and focus */
+        }
+
+        /* Header styles */
+        .header {
+            width: 100%;
+            padding: 20px 0;
+            background-color: #343a40;
+            color: #fff;
+            text-align: center;
+            margin-bottom: 20px;
+            /* Added margin to separate header from content */
+        }
+
+        .header .logo {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        /* Sidebar styles */
+        .sidebar {
+            margin-top: 76px;
+            /* Adjust the margin-top as needed */
+            height: 100%;
+            width: 250px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #555;
+            /* Change sidebar background color */
+            padding-top: 20px;
+            padding-bottom: 20px;
+            /* Added padding bottom for spacing */
+        }
+
+        .sidebar a {
+            padding: 10px 20px;
+            /* Increased padding for better clickability */
+            text-decoration: none;
+            font-size: 18px;
+            color: #fff;
+            display: block;
+            margin-bottom: 10px;
+            /* Added margin bottom for spacing */
+        }
+
+        .sidebar a:hover {
+            background-color: #231818;
+            /* Change sidebar hover color */
+        }
+
+        /* Main content styles */
+        .main-content {
+            margin-left: 250px;
+            margin-top: 76px;
+            /* Adjust top margin to leave space for the header */
+            padding: 20px;
+            width: calc(100% - 250px);
+            /* Adjust width to fit the remaining space */
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: #dd8a8a;
+            /* Change background color on hover */
+            color: #231818;
+            /* Change text color on hover */
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <a href="/user-data">User Data</a>
+        <a href="/add_book_admin">Add New Book</a>
+        <a href="/show_all_book_admin">Show All Book</a>
+    </div>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">Add New Book</div>
+        <!-- <a href="/" class="btn btn-primary">Back to AdminPage</a> -->
+    </div>
+
+    <div class="main-content">
+        <form method="post" action="" class="container">
+            <div class="form-group">
+                <label for="title">Title</label>
+                <div class="input-container">
+                    <input type="text" class="form-control" name="title" id="title" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="author">Author</label>
+                <div class="input-container">
+                    <input type="text" class="form-control" name="author" id="author" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="price">Price</label>
+                <div class="input-container">
+                    <input type="text" class="form-control" name="price" id="price" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="year_published">Year Published</label>
+                <div class="input-container">
+                    <input type="text" class="form-control" name="year_published" id="year_published" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="department">Department</label>
+                <div class="input-container">
+                    <input type="text" class="form-control" name="department" id="department" required>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Submit</button>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            <a href="/get_index" class="btn btn-secondary mt-2">Back to HomePage</a>
+        </form>
+    </div>
+</body>
+
+</html>

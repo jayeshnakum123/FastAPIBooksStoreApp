@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In</title>
+    <!-- Add Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .header {
+            width: 100%;
+            padding: 20px 0;
+            background-color: #343a40;
+            color: #fff;
+            text-align: center;
+            position: relative;
+        }
+
+        .name {
+            font-size: 1rem;
+            /* Adjust font size as needed */
+        }
+
+        .header .logo {
+            font-size: 2rem;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">Welcome To Book Store App !</div>
+    </div>
+
+    <div class="container mt-5">
+        <!-- Sign In Form -->
+        <form id="signinForm"> <!-- action="/signin"   method="POST" -->
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" class="form-control" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" class="form-control" id="password" name="password" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Sign In</button>
+        </form>
+    </div>
+    <br><br>
+    <center>
+        <div id="message"></div>
+    </center>
+
+    <!-- Add Bootstrap JS and Popper.js (optional) -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <script>
+        document.getElementById("signinForm").addEventListener("submit", async function (event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const username = formData.get("username");
+            const password = formData.get("password");
+
+            const response = await fetch("/signin", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ username, password })
+            });
+
+            if (response.redirected) {
+                // Redirected to index.html
+                window.location.href = response.url; // Redirect to index.html
+            } else {
+                const data = await response.json();
+                document.getElementById("message").textContent = data.detail;
+            }
+        });
+    </script>
+
+</body>
+
+</html>

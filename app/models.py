@@ -27,6 +27,7 @@ books = Book
 class UserRole(Enum):
     admin = "admin"
     student = "student"
+    teacher = "teacher"
 
 
 """Create Table SignUp"""

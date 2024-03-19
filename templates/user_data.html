@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Data</title>
+
+    <!-- Add Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+    <!-- Add Font Awesome CSS (for icons) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        /* Custom CSS for button hover effect */
+        .btn-primary:hover {
+            background-color: #3584da !important;
+            /* Change background color on hover */
+            border-color: #007bff !important;
+            /* Change border color on hover */
+        }
+
+        .btn-primary:hover:focus {
+            background-color: #3584da !important;
+            /* Change background color on hover and focus */
+            border-color: #0056b3 !important;
+            /* Change border color on hover and focus */
+        }
+
+        /* Header styles */
+        .header {
+            width: 100%;
+            padding: 20px 0;
+            background-color: #343a40;
+            color: #fff;
+            text-align: center;
+            margin-bottom: 20px;
+            /* Added margin to separate header from content */
+        }
+
+        .header .logo {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        /* Sidebar styles */
+        .sidebar {
+            margin-top: 76px;
+            /* Adjust the margin-top as needed */
+            height: 100%;
+            width: 250px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #555;
+            /* Change sidebar background color */
+            padding-top: 20px;
+            padding-bottom: 20px;
+            /* Added padding bottom for spacing */
+        }
+
+        .sidebar a {
+            padding: 10px 20px;
+            /* Increased padding for better clickability */
+            text-decoration: none;
+            font-size: 18px;
+            color: #fff;
+            display: block;
+            margin-bottom: 10px;
+            /* Added margin bottom for spacing */
+        }
+
+        .sidebar a:hover {
+            background-color: #231818;
+            /* Change sidebar hover color */
+        }
+
+        /* Main content styles */
+        .main-content {
+            margin-left: 250px;
+            margin-top: 76px;
+            /* Adjust top margin to leave space for the header */
+            padding: 20px;
+            width: calc(100% - 250px);
+            /* Adjust width to fit the remaining space */
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: #dd8a8a;
+            /* Change background color on hover */
+            color: #231818;
+            /* Change text color on hover */
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <a href="/user-data">User Data</a>
+        <a href="/add_book_admin">Add New Book</a>
+        <a href="/show_all_book_admin">Show All Book</a>
+    </div>
+
+    <!-- Header -->
+
+    <div class="header">
+        <div class="logo">User Data</div>
+    </div>
+
+    <!-- Main content -->
+    <div class="main-content">
+        <div class="container">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Department</th>
+                            <th>Actions</th> <!-- Add a new column for actions -->
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in user_data %}
+                        <tr>
+                            <td>{{ user.id }}</td>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.role }}</td>
+                            <!-- Check if 'Department' is a list before processing -->
+                            <td>
+                                {% if user.department is iterable and user.department|length > 0 %}
+                                {{ user.department|join(', ') }}
+                                {% else %}
+                                {{ user.department }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                <!-- Add edit icon with a link to the edit route -->
+                                <a href="/edit/{{ user.id }}" class="btn btn-warning btn-sm mr-2">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                                <!-- Add delete icon with a link to the delete route -->
+                                <a href="/delete/{{ user.id }}" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-trash-alt"></i> Delete
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <!-- Pagination -->
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    {% if current_page > 1 %}
+                    <li class="page-item">
+                        <a class="page-link" href="/user-data?page={{ current_page - 1 }}">Previous</a>
+                    </li>
+                    {% endif %}
+                    {% for page_num in range(1, total_pages + 1) %}
+                    <li class="page-item {% if page_num == current_page %}active{% endif %}">
+                        <a class="page-link" href="/user-data?page={{ page_num }}">{{ page_num }}</a>
+                    </li>
+                    {% endfor %}
+                    {% if current_page < total_pages %} <li class="page-item">
+                        <a class="page-link" href="/user-data?page={{ current_page + 1 }}">Next</a>
+                        </li>
+                        {% endif %}
+                </ul>
+            </nav>
+            <a href="/get_index" class="btn btn-secondary mt-2">Back to HomePage</a>
+        </div>
+    </div>
+
+    <!-- Add Bootstrap JS and Popper.js (optional) -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min

@@ -1,4 +1,15 @@
-from fastapi import FastAPI, HTTPException, Depends, APIRouter, Request, Form, status
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    Depends,
+    APIRouter,
+    Request,
+    Form,
+    status,
+    Query,
+)
+
+from fastapi import Request
 from sqlalchemy.orm import Session
 from app.database import SessionLocal, engine, Base
 from app.models import Book, Signup
@@ -8,10 +19,26 @@ from fastapi.security import OAuth2PasswordBearer
 from app.schemas import UserRole
 from app.models import Signup
 from datetime import datetime, timedelta
-from fastapi import Query
+
+# from fastapi import Query
 from typing import Optional
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import RedirectResponse
+
+from fastapi.responses import FileResponse
+from fastapi import Header
+
+from fastapi import Response
+
+# from fastapi.responses import RedirectResponse
+
+from typing import Optional
+from fastapi import Query
+from sqlalchemy import or_
 
 router = APIRouter()
+
+templates = Jinja2Templates(directory="templates")
 
 
 def get_db():
@@ -21,6 +48,264 @@ def get_db():
     finally:
         db.close()
 
+
+"""**************************************************************************"""
+
+
+#### Templates Routers Start In Admin Side And This Is The Admin Home Page Like IndexPage!
+
+
+@router.get("/get_index")
+async def get_index():
+    return FileResponse("templates/index.html")
+
+
+@router.get("/studentBook")
+async def student_book(
+    request: Request,
+    department: Optional[str] = Query(None, alias="department"),
+    db: Session = Depends(get_db),
+):
+    # If department is None, fetch all books
+    if not department:
+        books = db.query(Book).all()
+    else:
+        # If only one department is provided, fetch books for that department
+        if "," not in department:
+            books = db.query(Book).filter(Book.department == department).all()
+        else:
+            # If multiple departments are provided, fetch books for each department
+            departments = department.split(",")
+            books = (
+                db.query(Book)
+                .filter(or_(*[Book.department == d for d in departments]))
+                .all()
+            )
+
+    return templates.TemplateResponse(
+        "studentBook.html", {"request": request, "books": books}
+    )
+
+
+@router.post("/studentBook")
+async def studentBook():
+    return FileResponse("templates/studentBook.html")
+
+
+@router.get("/logout")
+async def logout(response: Response):
+    # Clear access token cookie
+    response.delete_cookie(key="access_token")
+    # Redirect to signin page
+    return RedirectResponse(url="/")  # signin_page
+
+
+"""8888888888888888888888"""
+
+
+@router.get("/")  # /signin_page
+async def get_signin_page():
+    return FileResponse("templates/signin.html")
+
+
+"""88888888888888888888888888"""
+
+
+"""**************************************************************************"""
+
+
+# Add Pagination to user_data endpoint
+@router.get("/user-data")
+async def user_data(
+    request: Request, page: int = Query(default=1), db: Session = Depends(get_db)
+):
+    # per_page = 10
+    per_page = 8
+    start = (page - 1) * per_page
+    end = start + per_page
+
+    # Fetch user data from the database for the current page
+    user_data = db.query(Signup).offset(start).limit(per_page).all()
+
+    if not user_data:
+        raise HTTPException(status_code=404, detail="No user data found")
+
+    total_users = db.query(Signup).count()
+    total_pages = (total_users - 1) // per_page + 1
+
+    return templates.TemplateResponse(
+        "user_data.html",
+        {
+            "request": request,
+            "user_data": user_data,
+            "total_pages": total_pages,
+            "current_page": page,
+        },
+    )
+
+
+"""**************************************************************************"""
+
+
+# Define edit  Routers In Admin Side
+@router.get("/edit/{user_id}")
+async def edit_user(request: Request, user_id: int, db: Session = Depends(get_db)):
+    # Fetch the user from the database
+    user = db.query(Signup).filter(Signup.id == user_id).first()
+
+    # Check if the user exists
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Render the edit user page with the user data
+    return templates.TemplateResponse(
+        "edit_user.html", {"request": request, "user": user}
+    )
+
+
+# ##post Request Edit Page Routers In Admin Side !
+@router.post("/edit/{user_id}")
+async def edit_user(
+    user_id: int,
+    request: Request,  # Move this non-default argument before the default arguments
+    username: str = Form(...),
+    role: str = Form(..., description="User role (student, admin, teacher)"),
+    department: str = Form(..., description="User department (Eng, Arts, Comm)"),
+    db: Session = Depends(get_db),
+):
+    # Validate role and department against predefined values
+    valid_roles = ["student", "admin", "teacher"]
+    valid_departments = ["Eng", "Arts", "Comm"]
+
+    errors = []
+
+    if role.lower() not in valid_roles:
+        errors.append("Invalid role. Enter only student, admin, or teacher.")
+
+    if department not in valid_departments:
+        errors.append("Invalid department. Enter only Eng, Arts, or Comm.")
+
+    if errors:
+        # Fetch the user from the database
+        user = db.query(Signup).filter(Signup.id == user_id).first()
+
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Render the edit user page with the user data and error messages
+        return templates.TemplateResponse(
+            "edit_user.html", {"request": request, "user": user, "errors": errors}
+        )
+
+    # Fetch the user from the database
+    user = db.query(Signup).filter(Signup.id == user_id).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Update the user details
+    user.username = username
+    user.role = role
+    user.department = department.split(",")
+
+    # Commit changes to the database
+    db.commit()
+
+    # Redirect to user_data.html after successfully editing the user
+    return RedirectResponse(url="/user-data", status_code=303)
+
+
+"""**************************************************************************"""
+
+
+# delete user Record Routers In Admin Side
+@router.get("/delete/{user_id}")
+async def delete_user(user_id: int, db: Session = Depends(get_db)):
+    # Fetch the user from the database
+    user = db.query(Signup).filter(Signup.id == user_id).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Delete the user from the database
+    db.delete(user)
+    db.commit()
+
+    # Redirect to user_data.html after successfully deleting the user
+    return RedirectResponse(url="/user-data", status_code=303)
+
+
+"""**************************************************************************"""
+
+
+# Add New Book Admin Site & Open A New Page
+@router.get("/add_book_admin")
+async def add_book_admin(request: Request):  #
+    return templates.TemplateResponse("AddNewBook.html", {"request": request})  #
+
+
+# Send The New Book Data using Post Method
+@router.post("/add_book_admin")
+async def add_book_admin(
+    request: Request,
+    title: str = Form(...),
+    author: str = Form(...),
+    price: str = Form(...),
+    year_published: int = Form(...),
+    department: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    new_book = Book(
+        title=title,
+        author=author,
+        price=price,
+        year_published=year_published,
+        department=department,
+    )
+    db.add(new_book)
+    db.commit()
+    db.refresh(new_book)
+    return templates.TemplateResponse("index.html", {"request": request})
+    # return RedirectResponse(url="/")
+    # return {"Message": "Book added successfully !"}
+
+
+"""**************************************************************************"""
+
+
+# Route to show all books for admin with pagination
+@router.get("/show_all_book_admin")
+async def show_all_book_admin(
+    request: Request, page: int = 1, per_page: int = 8, db: Session = Depends(get_db)
+):
+    # Calculate offset
+    offset = (page - 1) * per_page
+    # Fetch books with pagination
+    admin_book = db.query(Book).offset(offset).limit(per_page).all()
+    total_books = db.query(Book).count()
+    total_pages = -(
+        -total_books // per_page
+    )  # Ceiling division to calculate total pages
+    return templates.TemplateResponse(
+        "showAllBookAdmin.html",
+        {
+            "request": request,
+            "admin_book": admin_book,
+            "total_pages": total_pages,
+            "page": page,
+        },
+    )
+
+
+# @router.get("/show_all_book_admin")
+# async def show_all_book_admin(request: Request, db: Session = Depends(get_db)):
+#     admin_book = db.query(Book).all()
+#     return templates.TemplateResponse(
+#         "showAllBookAdmin.html", {"request": request, "admin_book": admin_book}
+#     )
+
+
+"""**************************************************************************"""
 
 ################################################################################
 SECRET_KEY = "your-secret-key"
@@ -43,9 +328,11 @@ def create_access_token(data: dict):
     return encoded_jwt
 
 
-@router.post("/signin")
-async def signin(signinForm: SigninForm):
-    db = SessionLocal()
+@router.post("/signin")  # User signin
+async def signin(
+    signinForm: SigninForm,
+    db: Session = Depends(get_db),
+):
     signin_user = (
         db.query(Signup)
         .filter(
@@ -57,21 +344,43 @@ async def signin(signinForm: SigninForm):
     if (
         signin_user is None
         or signin_user.password != signinForm.password
-        and signin_user.username != signinForm.username
+        or signin_user.username != signinForm.username
     ):
-        raise HTTPException(status_code=404, detail="Invalid UserName and Password !")
+        raise HTTPException(
+            status_code=404,
+            detail="Invalid UserName and Password! Please try again.",
+        )
 
     # Generate a JWT token
     token_data = {"sub": signin_user.username, "role": signin_user.role}
     access_token = create_access_token(token_data)
 
-    return {
-        "Message": "User Signin Done!",
-        "UserName": signin_user.username,
-        "UserRole": signin_user.role,
-        "Department": signin_user.department,
-        "access_token": access_token,
-    }
+    # Determine the redirect URL based on user role
+    if signin_user.role == UserRole.admin.value:
+        redirect_url = "/get_index"
+    elif signin_user.role == UserRole.student.value:
+        redirect_url = f"/studentBook?department={','.join(signin_user.department)}"
+    elif signin_user.role == UserRole.teacher.value:
+        redirect_url = f"/studentBook?department={','.join(signin_user.department)}"
+    else:
+        # Handle other roles if necessary
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    # Redirect to the appropriate page based on user role upon successful sign-in
+    response = RedirectResponse(url=redirect_url)
+
+    # Set access token as a cookie in the response
+    response.set_cookie(key="access_token", value=access_token)
+
+    return response
+
+    # return {
+    #     "Message": "User Signin Done!",
+    #     "UserName": signin_user.username,
+    #     "UserRole": signin_user.role,
+    #     "Department": signin_user.department,
+    #     "access_token": access_token,
+    # }
 
 
 ################################################################################################
@@ -120,11 +429,35 @@ async def get_books_by_user(
     current_user_role: str = Depends(get_current_user_role),
     db: Session = Depends(get_db),
     username: str = Depends(get_current_username),
+    authorization: str = Header(...),
 ):
     try:
+        # Validate access token
+        if authorization.startswith("Bearer "):
+            token = authorization.split(" ")[1]
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            username = payload.get("sub")
+            role = payload.get("role")
+        else:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid authorization header. Please provide a valid access token.",
+            )
+
         if current_user_role == UserRole.admin.value:
             books = db.query(Book).all()
         elif current_user_role == UserRole.student.value:
+            # Retrieve the user from the database based on the provided username
+            user = db.query(Signup).filter(Signup.username == username).first()
+
+            # Check if the user exists
+            if user is None:
+                raise HTTPException(status_code=404, detail="User not found")
+
+            # Retrieve books based on the user's department
+            books = db.query(Book).filter(Book.department.in_(user.department)).all()
+
+        elif current_user_role == UserRole.teacher.value:
             # Retrieve the user from the database based on the provided username
             user = db.query(Signup).filter(Signup.username == username).first()
 

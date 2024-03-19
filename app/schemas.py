@@ -60,7 +60,7 @@ class SignupForm(BaseModel):
     username: str
     password: str
     role: UserRole  # Using Roll Are Access Is UsingRole Class Enum
-    department: Union[str, list]  # Use list instead of str
+    department: Union[str, list]  # string and list both values are accessible
     # department: str
 
     @validator("username")
